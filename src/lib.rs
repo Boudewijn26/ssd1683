@@ -41,6 +41,7 @@ mod cmd {
     pub const SET_RAMXPOS: u8 = 0x44;
     pub const SET_RAMYPOS: u8 = 0x45;
     pub const BORDER_WAVEFORM_CONTROL: u8 = 0x3C;
+    pub const SET_TEMPERATURE_REGISTER: u8 = 0x1A;
     pub const TEMP_CONTROL: u8 = 0x18;
 
     // Update
@@ -48,31 +49,37 @@ mod cmd {
     pub const SET_RAMY_COUNTER: u8 = 0x4F;
     pub const WRITE_BW_DATA: u8 = 0x24;
     pub const WRITE_RED_DATA: u8 = 0x26;
+    pub const UPDATE_DISPLAY_CTRL1: u8 = 0x21;
     pub const UPDATE_DISPLAY_CTRL2: u8 = 0x22;
     pub const MASTER_ACTIVATE: u8 = 0x20;
+
+    // Read
+    pub const READ_RAM: u8 = 0x27;
 }
 
 mod flag {
     pub const DATA_ENTRY_INCRY_INCRX: u8 = 0b11;
     pub const INTERNAL_TEMP_SENSOR: u8 = 0x80;
+    pub const EXTERNAL_TEMP_SENSOR: u8 = 0x48;
     pub const BORDER_WAVEFORM_FOLLOW_LUT: u8 = 0b0100;
     pub const BORDER_WAVEFORM_LUT1: u8 = 0b0001;
     pub const DISPLAY_MODE_1: u8 = 0xF7;
 }
 
 /// Maximum display height this driver supports
-pub const HEIGHT: u8 = 200;
+pub const HEIGHT: u16 = 300;
 
 /// Maximum display width this driver supports
-pub const WIDTH: u8 = 200;
+pub const WIDTH: u16 = 400;
 
 pub mod interface;
+pub mod soft_spi;
 
 /// Useful exports
 pub mod prelude {
     pub use crate::color::Color;
-    pub use crate::driver::Ssd1681;
+    pub use crate::driver::Ssd1683;
 
     #[cfg(feature = "graphics")]
-    pub use crate::graphics::{Display, Display1in54, DisplayRotation};
+    pub use crate::graphics::{Display, Display4in2, DisplayRotation};
 }

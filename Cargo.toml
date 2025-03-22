@@ -1,12 +1,12 @@
 [package]
-name = "ssd1681"
+name = "ssd1683"
 version = "0.1.0"
-authors = ["Paul Diaconescu <p@afajl.com>"]
+authors = ["Boudewijn van Groos <boudewijn@vangroos.nl>"]
 description = "Driver for the SSD1681 e-Paper display (EPD) controller, for use with embedded-hal"
 edition = "2018"
 
-documentation = "https://docs.rs/ssd1681"
-repository = "https://github.com/afajl/ssd1681"
+documentation = "https://docs.rs/ssd1683"
+repository = "https://github.com/Boudewijn26/ssd1683"
 
 readme = "README.md"
 keywords = ["embedded-hal-driver", "epd", "epaper", "driver", "ssd1681"]
@@ -15,16 +15,18 @@ categories = ["embedded", "no-std"]
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-embedded-hal = { version = "0.2.3", features = ["unproven"] }
-embedded-graphics = { version = "0.6.2", optional = true }
+embedded-hal = { version = "1.0.0" }
+embedded-graphics = { version = "0.8.1", optional = true }
+log = { version = "0.4.26", optional = true }
 
 [dev-dependencies]
 [target.'cfg(target_os = "linux")'.dependencies]
-linux-embedded-hal = "0.3.0"
+linux-embedded-hal = "0.4.0"
 
 [features]
 default = ["graphics"]
 graphics = ["embedded-graphics"]
+log = ["dep:log"]
 
 [profile.release]
 lto = true

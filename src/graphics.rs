@@ -2,6 +2,7 @@
 
 use crate::color::Color;
 use crate::{HEIGHT, WIDTH};
+use embedded_graphics::primitives::Rectangle;
 use embedded_graphics::{pixelcolor::BinaryColor, prelude::*};
 
 /// Displayrotation
@@ -29,7 +30,7 @@ impl Default for DisplayRotation {
 /// - Drawing (With the help of DrawTarget/Embedded Graphics)
 /// - Rotations
 /// - Clearing
-pub trait Display: DrawTarget<BinaryColor> {
+pub trait Display: DrawTarget {
     /// Clears the buffer of the display with the chosen background color
     fn clear_buffer(&mut self, background_color: Color) {
         let fill_color = if self.is_inverted() {
@@ -103,17 +104,17 @@ pub trait Display: DrawTarget<BinaryColor> {
     }
 }
 
-/// Display for a 200x200 panel
-pub struct Display1in54 {
+/// Display for a 400x300 panel
+pub struct Display4in2 {
     buffer: [u8; WIDTH as usize * HEIGHT as usize / 8],
     rotation: DisplayRotation,
     is_inverted: bool,
 }
 
-impl Display1in54 {
+impl Display4in2 {
     /// Create a black & white display buffer
     pub fn bw() -> Self {
-        Display1in54 {
+        Display4in2 {
             buffer: [Color::White.get_byte_value(); buffer_len(WIDTH as usize, HEIGHT as usize)],
             rotation: DisplayRotation::default(),
             is_inverted: true,
@@ -122,28 +123,78 @@ impl Display1in54 {
 
     /// Create a red display buffer
     pub fn red() -> Self {
-        Display1in54 {
+        Display4in2 {
             buffer: [Color::White.inverse().get_byte_value();
                 buffer_len(WIDTH as usize, HEIGHT as usize)],
             rotation: DisplayRotation::default(),
             is_inverted: false,
         }
     }
+
+    /// Return display center
+    pub fn center(&self) -> Point {
+        Point::new(WIDTH as i32 / 2, HEIGHT as i32 / 2)
+    }
 }
 
-impl DrawTarget<BinaryColor> for Display1in54 {
+impl Dimensions for Display4in2 {
+    fn bounding_box(&self) -> embedded_graphics::primitives::Rectangle {
+        Rectangle::new(Point::new(0, 0), Size::new(WIDTH.into(), HEIGHT.into()))
+    }
+}
+
+impl DrawTarget for Display4in2 {
     type Error = core::convert::Infallible;
+    type Color = BinaryColor;
 
-    fn draw_pixel(&mut self, pixel: Pixel<BinaryColor>) -> Result<(), Self::Error> {
-        self.draw_helper(u32::from(WIDTH), u32::from(HEIGHT), pixel)
-    }
+    fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
+    where
+        I: IntoIterator<Item = Pixel<Self::Color>>,
+    {
+        let rotation = self.rotation();
+        let is_inverted = self.is_inverted();
+        let buffer = self.get_mut_buffer();
+        for pixel in pixels {
+            let Pixel(point, color) = pixel;
+            if outside_display(point, WIDTH.into(), HEIGHT.into(), rotation) {
+                return Ok(());
+            }
 
-    fn size(&self) -> Size {
-        Size::new(u32::from(WIDTH), u32::from(HEIGHT))
+            // Give us index inside the buffer and the bit-position in that u8 which needs to be changed
+            let (index, bit) = find_position(
+                point.x as u32,
+                point.y as u32,
+                WIDTH.into(),
+                HEIGHT.into(),
+                rotation,
+            );
+            let index = index as usize;
+
+            // "Draw" the Pixel on that bit
+            match color {
+                // Black/Red
+                BinaryColor::On => {
+                    if is_inverted {
+                        buffer[index] &= !bit;
+                    } else {
+                        buffer[index] |= bit;
+                    }
+                }
+                // White
+                BinaryColor::Off => {
+                    if is_inverted {
+                        buffer[index] |= bit;
+                    } else {
+                        buffer[index] &= !bit;
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 }
 
-impl Display for Display1in54 {
+impl Display for Display4in2 {
     fn buffer(&self) -> &[u8] {
         &self.buffer
     }
@@ -224,19 +275,19 @@ fn find_position(x: u32, y: u32, width: u32, height: u32, rotation: DisplayRotat
 /// is not divisible by 8.
 #[must_use]
 const fn buffer_len(width: usize, height: usize) -> usize {
-    (width + 7) / 8 * height
+    width * height / 8
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{find_position, outside_display, Display, Display1in54, DisplayRotation};
+    use super::{find_position, outside_display, Display, Display4in2, DisplayRotation};
     use crate::color::Black;
     use crate::color::Color;
-    use embedded_graphics::{prelude::*, primitives::Line, style::PrimitiveStyle};
+    use embedded_graphics::{prelude::*, primitives::Line, primitives::PrimitiveStyle};
 
     #[test]
     fn buffer_clear() {
-        let mut display = Display1in54::bw();
+        let mut display = Display4in2::bw();
 
         for &byte in display.buffer.iter() {
             assert_eq!(byte, Color::White.get_byte_value());
@@ -277,7 +328,7 @@ mod tests {
 
     #[test]
     fn graphics_rotation_0() {
-        let mut display = Display1in54::bw();
+        let mut display = Display4in2::bw();
 
         let _ = Line::new(Point::new(0, 0), Point::new(7, 0))
             .into_styled(PrimitiveStyle::with_stroke(Black, 1))
